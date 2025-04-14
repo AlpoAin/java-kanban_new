@@ -20,6 +20,10 @@ public class Epic extends Task {
         subtaskIds.add(subtaskId);
     }
 
+    public void setSubtaskIds(List<Integer> subtaskIds) {
+        this.subtaskIds = subtaskIds;
+    }
+
     public List<Integer> getSubtaskIds() {
         return new ArrayList<>(subtaskIds);
     }
