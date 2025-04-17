@@ -121,4 +121,20 @@ public class InMemoryTaskManager implements TaskManager {
             historyManager.remove(id);
         }
     }
+
+    protected Map<Integer, Task> getTasks() {
+        return tasks;
+    }
+
+    protected Map<Integer, Epic> getEpics() {
+        return epics;
+    }
+
+    protected Map<Integer, Subtask> getSubtasks() {
+        return subtasks;
+    }
+
+    protected HistoryManager getHistoryManager() {
+        return historyManager;
+    }
 }

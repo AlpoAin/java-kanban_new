@@ -6,10 +6,15 @@ import tasks.model.Epic;
 import tasks.model.Status;
 import tasks.model.Subtask;
 import tasks.model.Task;
+import tasks.manager.FileBackedTaskManager;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] args) {
-        TaskManager manager = Managers.getDefault();
+        Path path = Paths.get("tasks.csv");
+        TaskManager manager = FileBackedTaskManager.loadFromFile(path.toFile());
+
 
         Task task1 = new Task("Задача 1", "Описание задачи 1");
         manager.addTask(task1);
