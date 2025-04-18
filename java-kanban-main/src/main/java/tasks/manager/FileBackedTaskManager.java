@@ -5,14 +5,13 @@ import tasks.model.Subtask;
 import tasks.model.Task;
 import tasks.model.Status;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-
+import java.nio.file.Files;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class FileBackedTaskManager extends InMemoryTaskManager {
     private final File file;
@@ -61,26 +60,27 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
 
     public void save() {
         if (isLoading) return;
+
         try (Writer writer = new FileWriter(file)) {
-            // пишем заголовок
+            // Заголовок
             writer.append(HEADER).append("\n");
 
-            // пишем все Task
+            // Все задачи
             for (Task t : getTasks().values()) {
-                writer.append(toString(t)).append("\n");
+                writer.append(toCsvString(t)).append("\n");
             }
-            // пишем все Epic
+            // Все эпики
             for (Epic e : getEpics().values()) {
-                writer.append(toString(e)).append("\n");
+                writer.append(toCsvString(e)).append("\n");
             }
-            // пишем все Subtask
+            // Все подзадачи
             for (Subtask s : getSubtasks().values()) {
-                writer.append(toString(s)).append("\n");
+                writer.append(toCsvString(s)).append("\n");
             }
 
-            // разделитель перед историей
+            // Пустая строка-разделитель
             writer.append("\n");
-            // пишем историю просмотров
+            // История просмотров
             writer.append(historyToString());
 
         } catch (IOException e) {
@@ -88,7 +88,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         }
     }
 
-    private String toString(Task task) {
+    private String toCsvString(Task task) {
         StringJoiner joiner = new StringJoiner(",");
         joiner.add(String.valueOf(task.getId()));
         joiner.add(task.getClass().getSimpleName().toUpperCase());
@@ -104,14 +104,26 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
 
     public static FileBackedTaskManager loadFromFile(File file) {
         FileBackedTaskManager manager = new FileBackedTaskManager(file);
+
+        // Если файл не существует — возвращаем пустой
+        if (!file.exists()) {
+            return manager;
+        }
+
         manager.isLoading = true;
         try {
+            // Очищаем старые данные
+            manager.getTasks().clear();
+            manager.getEpics().clear();
+            manager.getSubtasks().clear();
+            manager.getHistoryManager().getHistory().clear();
+
             List<String> lines = Files.readAllLines(file.toPath());
             if (lines.size() < 2) {
-                manager.isLoading = false;
                 return manager;
             }
-            // Пропустить заголовок, читать до пустой строки
+
+            // Читаем записи до пустой строки
             int i = 1;
             for (; i < lines.size(); i++) {
                 String line = lines.get(i);
@@ -129,33 +141,46 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                         break;
                 }
             }
+
             // Восстановление истории
             if (i + 1 < lines.size()) {
                 List<Integer> historyIds = historyFromString(lines.get(i + 1));
                 for (int id : historyIds) {
-                    if (manager.getTasks().containsKey(id))
+                    if (manager.getTasks().containsKey(id)) {
                         manager.getHistoryManager().add(manager.getTasks().get(id));
-                    else if (manager.getEpics().containsKey(id))
+                    } else if (manager.getEpics().containsKey(id)) {
                         manager.getHistoryManager().add(manager.getEpics().get(id));
-                    else if (manager.getSubtasks().containsKey(id))
+                    } else if (manager.getSubtasks().containsKey(id)) {
                         manager.getHistoryManager().add(manager.getSubtasks().get(id));
+                    }
                 }
             }
+
+            // Вычисляем новый nextId, чтобы номера не дублировались
+            int maxId = 0;
+            for (Task t : manager.getTasks().values())      maxId = Math.max(maxId, t.getId());
+            for (Epic e : manager.getEpics().values())      maxId = Math.max(maxId, e.getId());
+            for (Subtask s : manager.getSubtasks().values()) maxId = Math.max(maxId, s.getId());
+            manager.setNextId(maxId + 1);
+
         } catch (IOException e) {
             throw new ManagerSaveException("Ошибка загрузки из файла", e);
+        } finally {
+            manager.isLoading = false;
         }
-        manager.isLoading = false;
+
         return manager;
     }
 
     private static Task fromString(String value) {
         String[] parts = value.split(",", -1);
-        int    id     = Integer.parseInt(parts[0]);
-        String type   = parts[1];
-        String name   = parts[2];
+        int id = Integer.parseInt(parts[0]);
+        String type = parts[1];
+        String name = parts[2];
         Status status = Status.valueOf(parts[3]);
-        String desc   = parts[4];
+        String desc = parts[4];
         String epicPart = parts.length > 5 ? parts[5] : "";
+
         switch (type) {
             case "TASK":
                 return new Task(id, name, desc, status);
@@ -186,7 +211,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         return ids;
     }
 
-    // Доступ к защищённым коллекциям родителя
+    // Доступ к protected‑методам родителя
     @Override protected Map<Integer, Task> getTasks()      { return super.getTasks(); }
     @Override protected Map<Integer, Epic> getEpics()      { return super.getEpics(); }
     @Override protected Map<Integer, Subtask> getSubtasks(){ return super.getSubtasks(); }

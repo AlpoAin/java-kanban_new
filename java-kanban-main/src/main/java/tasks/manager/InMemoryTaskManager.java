@@ -137,4 +137,9 @@ public class InMemoryTaskManager implements TaskManager {
     protected HistoryManager getHistoryManager() {
         return historyManager;
     }
+
+    protected void setNextId(int nextId) {
+        this.nextId = nextId;
+    }
+
 }
