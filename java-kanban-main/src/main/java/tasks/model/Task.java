@@ -1,10 +1,27 @@
 package tasks.model;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 public class Task {
     protected int id;
     protected String name;
     protected String description;
     protected Status status;
+    protected Duration duration;
+    protected LocalDateTime startTime;
+
+    public Duration getDuration() {
+        return duration;
+    }
+    public void setDuration(Duration duration) {
+        this.duration = duration;
+    }
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
 
     public Task(String name, String description) {
         this.name = name;
@@ -63,4 +80,11 @@ public class Task {
     public String toString() {
         return "Task{id=" + id + ", name='" + name + "', status=" + status + "}";
     }
+
+    public LocalDateTime getEndTime() {
+        return startTime != null
+                ? startTime.plus(duration)
+                : null;
+    }
+
 }
