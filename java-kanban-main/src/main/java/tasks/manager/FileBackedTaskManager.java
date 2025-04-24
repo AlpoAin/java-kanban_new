@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 public class FileBackedTaskManager extends InMemoryTaskManager {
     private final File file;
-    boolean isLoading = false;
+    private boolean isLoading = false;
     private static final String HEADER =
             "id,type,name,status,description,epic,duration,startTime";
 
