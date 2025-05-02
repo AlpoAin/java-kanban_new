@@ -156,6 +156,21 @@ public class InMemoryTaskManager implements TaskManager {
         return historyManager.getHistory();
     }
 
+    @Override
+    public List<Task> getTasks() {
+        return new ArrayList<>(tasks.values());
+    }
+
+    @Override
+    public List<Epic> getEpics() {
+        return new ArrayList<>(epics.values());
+    }
+
+    @Override
+    public List<Subtask> getSubtasks() {
+        return new ArrayList<>(subtasks.values());
+    }
+
     /**
      * Возвращает задачи и подзадачи, отсортированные по времени старта.
      */
@@ -164,15 +179,15 @@ public class InMemoryTaskManager implements TaskManager {
     }
 
     // Для FileBackedTaskManager — доступ к защищённым данным родителя
-    protected Map<Integer, Task> getTasks() {
+    protected Map<Integer, Task> getTasksMap() {
         return tasks;
     }
 
-    protected Map<Integer, Epic> getEpics() {
+    protected Map<Integer, Epic> getEpicsMap() {
         return epics;
     }
 
-    protected Map<Integer, Subtask> getSubtasks() {
+    protected Map<Integer, Subtask> getSubtasksMap() {
         return subtasks;
     }
 

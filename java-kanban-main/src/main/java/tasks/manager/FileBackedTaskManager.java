@@ -90,15 +90,15 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
             // Заголовок
             writer.append(HEADER).append("\n");
             // Все задачи
-            for (Task t : getTasks().values()) {
+            for (Task t : getTasksMap().values()) {
                 writer.append(toCsvString(t)).append("\n");
             }
             // Все эпики
-            for (Epic e : getEpics().values()) {
+            for (Epic e : getEpicsMap().values()) {
                 writer.append(toCsvString(e)).append("\n");
             }
             // Все подзадачи
-            for (Subtask s : getSubtasks().values()) {
+            for (Subtask s : getSubtasksMap().values()) {
                 writer.append(toCsvString(s)).append("\n");
             }
             // Разделитель
@@ -124,9 +124,9 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         manager.isLoading = true;
         try {
             // очистка
-            manager.getTasks().clear();
-            manager.getEpics().clear();
-            manager.getSubtasks().clear();
+            manager.getTasksMap().clear();
+            manager.getEpicsMap().clear();
+            manager.getSubtasksMap().clear();
             manager.getHistoryManager().getHistory().clear();
 
             List<String> lines = Files.readAllLines(file.toPath());
@@ -139,9 +139,15 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                 if (line.isEmpty()) break;
                 Task task = fromString(line);
                 switch (task.getClass().getSimpleName().toUpperCase()) {
-                    case "TASK":    manager.addTask(task);    break;
-                    case "EPIC":    manager.addEpic((Epic) task);    break;
-                    case "SUBTASK": manager.addSubtask((Subtask) task); break;
+                    case "TASK":
+                        manager.addTask(task);
+                        break;
+                    case "EPIC":
+                        manager.addEpic((Epic) task);
+                        break;
+                    case "SUBTASK":
+                        manager.addSubtask((Subtask) task);
+                        break;
                 }
             }
 
@@ -151,27 +157,33 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                 if (!hist.isEmpty()) {
                     for (String idStr : hist.split(",")) {
                         int id = Integer.parseInt(idStr);
-                        if (manager.getTasks().containsKey(id)) {
-                            manager.getHistoryManager().add(manager.getTasks().get(id));
-                        } else if (manager.getEpics().containsKey(id)) {
-                            manager.getHistoryManager().add(manager.getEpics().get(id));
-                        } else if (manager.getSubtasks().containsKey(id)) {
-                            manager.getHistoryManager().add(manager.getSubtasks().get(id));
+                        if (manager.getTasksMap().containsKey(id)) {
+                            manager.getHistoryManager().add(manager.getTasksMap().get(id));
+                        } else if (manager.getEpicsMap().containsKey(id)) {
+                            manager.getHistoryManager().add(manager.getEpicsMap().get(id));
+                        } else if (manager.getSubtasksMap().containsKey(id)) {
+                            manager.getHistoryManager().add(manager.getSubtasksMap().get(id));
                         }
                     }
                 }
             }
 
             // пересчитать время эпиков
-            for (Epic epic : manager.getEpics().values()) {
-                epic.updateTimeMetrics(manager.getSubtasks());
+            for (Epic epic : manager.getEpicsMap().values()) {
+                epic.updateTimeMetrics(manager.getSubtasksMap());
             }
 
             // вычислить следующий ID
             int maxId = 0;
-            for (Task t : manager.getTasks().values())    maxId = Math.max(maxId, t.getId());
-            for (Epic e : manager.getEpics().values())    maxId = Math.max(maxId, e.getId());
-            for (Subtask s : manager.getSubtasks().values()) maxId = Math.max(maxId, s.getId());
+            for (Task t : manager.getTasksMap().values()) {
+                maxId = Math.max(maxId, t.getId());
+            }
+            for (Epic e : manager.getEpicsMap().values()) {
+                maxId = Math.max(maxId, e.getId());
+            }
+            for (Subtask s : manager.getSubtasksMap().values()) {
+                maxId = Math.max(maxId, s.getId());
+            }
             manager.setNextId(maxId + 1);
 
         } catch (IOException e) {
@@ -220,10 +232,8 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         return task;
     }
 
-    // доступ к защищённому API родителя
-    @Override protected Map<Integer, Task> getTasks()      { return super.getTasks(); }
-    @Override protected Map<Integer, Epic> getEpics()      { return super.getEpics(); }
-    @Override protected Map<Integer, Subtask> getSubtasks(){ return super.getSubtasks(); }
-    @Override protected HistoryManager getHistoryManager() { return super.getHistoryManager(); }
-    @Override protected void setNextId(int nextId)         { super.setNextId(nextId); }
+    @Override
+    protected void setNextId(int nextId) {
+        super.setNextId(nextId);
+    }
 }
