@@ -5,6 +5,8 @@ import tasks.model.Epic;
 import tasks.model.Subtask;
 import java.util.*;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
 
 /**
  * Реализация TaskManager, хранящая всё в памяти,
@@ -150,6 +152,17 @@ public class InMemoryTaskManager implements TaskManager {
             prioritized.remove(removed);
         }
     }
+
+    @Override
+    public List<Subtask> getEpicSubtasks(int epicId) {
+        Epic e = epics.get(epicId);
+        if (e == null) return null;
+        return e.getSubtaskIds().stream()
+                .map(subtasks::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     public List<Task> getHistory() {

@@ -8,9 +8,8 @@ import tasks.model.Task;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public class TasksHandler extends BaseHttpHandler implements HttpHandler {
     private final TaskManager manager;
@@ -23,44 +22,55 @@ public class TasksHandler extends BaseHttpHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        System.out.println(">>> TasksHandler got: " + exchange.getRequestMethod()
-                + " " + exchange.getRequestURI());
+        String path   = exchange.getRequestURI().getPath();
         String method = exchange.getRequestMethod();
-        switch (method) {
-            case "GET":
-                // GET /tasks — вернуть список
-                List<Task> tasks = manager.getTasks();
-                String json = gson.toJson(tasks);
-                sendJson(exchange, json);
-                break;
 
-            case "POST":
-                // POST /tasks — создать или обновить
+        // 1) /tasks/{id}
+        if (path.matches("/tasks/\\d+")) {
+            int id = Integer.parseInt(path.substring("/tasks/".length()));
+            if ("GET".equals(method)) {
+                Task t = manager.getTask(id);
+                if (t == null) sendNotFound(exchange);
+                else sendJson(exchange, gson.toJson(t));
+            } else if ("DELETE".equals(method)) {
+                if (manager.getTask(id) == null) {
+                    sendNotFound(exchange);
+                } else {
+                    manager.removeTask(id);
+                    sendJson(exchange, "");
+                }
+            } else {
+                sendNotFound(exchange);
+            }
+            return;
+        }
+
+        // 2) /tasks
+        switch (method) {
+            case "GET": {
+                List<Task> all = manager.getTasks();
+                sendJson(exchange, gson.toJson(all));
+                break;
+            }
+            case "POST": {
                 InputStream is = exchange.getRequestBody();
                 String body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
                 Task task = gson.fromJson(body, Task.class);
-
                 try {
-                    if (task.getId() == 0) {
-                        manager.addTask(task);
-                        sendCreated(exchange);
-                    } else {
-                        manager.addTask(task); // у нас метод комбинированный: новый или update
-                        sendCreated(exchange);
-                    }
+                    manager.addTask(task);
+                    sendCreated(exchange);
                 } catch (IllegalArgumentException e) {
                     sendNotAcceptable(exchange);
                 } catch (Exception e) {
                     sendServerError(exchange);
                 }
                 break;
-
-            case "DELETE":
-                // DELETE /tasks — удалить все
+            }
+            case "DELETE": {
                 manager.getTasks().forEach(t -> manager.removeTask(t.getId()));
-                sendJson(exchange, ""); // можно 200 без тела
+                sendJson(exchange, "");
                 break;
-
+            }
             default:
                 sendNotFound(exchange);
         }

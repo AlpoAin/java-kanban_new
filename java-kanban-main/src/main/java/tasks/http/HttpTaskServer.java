@@ -1,13 +1,14 @@
 package tasks.http;
 
+import com.google.gson.*;
 import com.sun.net.httpserver.HttpServer;
-import tasks.manager.TaskManager;
 import tasks.manager.Managers;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import tasks.manager.TaskManager;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 public class HttpTaskServer {
     private static final int PORT = 8080;
@@ -17,16 +18,29 @@ public class HttpTaskServer {
 
     public HttpTaskServer(TaskManager manager) throws IOException {
         this.manager = manager;
-        this.gson = new GsonBuilder().serializeNulls().create();
 
-        // Создаём сервер на порту 8080, без очереди (0)
+        this.gson = new GsonBuilder()
+                .serializeNulls()
+
+                // Duration ↔ минуты
+                .registerTypeAdapter(Duration.class, (JsonSerializer<Duration>) (src, type, ctx) ->
+                        src == null ? JsonNull.INSTANCE : new JsonPrimitive(src.toMinutes()))
+                .registerTypeAdapter(Duration.class, (JsonDeserializer<Duration>) (json, type, ctx) ->
+                        json == null || json.isJsonNull() ? null : Duration.ofMinutes(json.getAsLong()))
+
+                // LocalDateTime ↔ ISO-строка
+                .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, type, ctx) ->
+                        src == null ? JsonNull.INSTANCE : new JsonPrimitive(src.toString()))
+                .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, type, ctx) ->
+                        json == null || json.isJsonNull() ? null : LocalDateTime.parse(json.getAsString()))
+
+                .create();
+
         this.server = HttpServer.create(new InetSocketAddress(PORT), 0);
-
-        // Здесь будем регистрировать контексты (эндпоинты)
-        server.createContext("/tasks",      new TasksHandler(manager, gson));
-        server.createContext("/subtasks",   new SubtasksHandler(manager, gson));
-        server.createContext("/epics",      new EpicsHandler(manager, gson));
-        server.createContext("/history",    new HistoryHandler(manager, gson));
+        server.createContext("/tasks",       new TasksHandler(manager, gson));
+        server.createContext("/subtasks",    new SubtasksHandler(manager, gson));
+        server.createContext("/epics",       new EpicsHandler(manager, gson));
+        server.createContext("/history",     new HistoryHandler(manager, gson));
         server.createContext("/prioritized", new PrioritizedHandler(manager, gson));
     }
 
@@ -41,12 +55,11 @@ public class HttpTaskServer {
     }
 
     public static void main(String[] args) throws IOException {
-        TaskManager mgr = Managers.getDefault(); // или FileBackedTaskManager.loadFromFile(...)
+        TaskManager mgr = Managers.getDefault();
         HttpTaskServer httpServer = new HttpTaskServer(mgr);
         httpServer.start();
     }
 
-    /** Чтобы из тестов брать одинаковый экземпляр Gson */
     public Gson getGson() {
         return gson;
     }
